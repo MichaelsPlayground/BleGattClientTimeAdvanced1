@@ -9,6 +9,12 @@ The code is based on an article series found here:
 
 It runs on Android 12 (SDK32) and for testing you need a companion device or real BLE device.
 
+For general information see here:
+- 1 Bluetooth Low Energy overview https://developer.android.com/guide/topics/connectivity/bluetooth/ble-overview 
+- 2 Find BLE devices https://developer.android.com/guide/topics/connectivity/bluetooth/find-ble-devices
+- 3 Connect to a GATT server https://developer.android.com/guide/topics/connectivity/bluetooth/connect-gatt-server
+- 4 Transfer BLE data https://developer.android.com/guide/topics/connectivity/bluetooth/transfer-ble-data
+
 ```plaintext
     <!-- Min/target SDK versions (<uses-sdk>) managed by build.gradle -->
     <!-- Request legacy Bluetooth permissions on older devices. -->

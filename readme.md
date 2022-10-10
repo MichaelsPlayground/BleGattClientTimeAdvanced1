@@ -1,4 +1,4 @@
-# Bluetotth Low Energy (LE) Sample Gatt Client
+# Bluetooth Low Energy (LE) Sample Gatt Client
 
 The code is based on an article series found here:
 

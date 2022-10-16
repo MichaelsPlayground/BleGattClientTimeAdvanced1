@@ -15,6 +15,24 @@ For general information see here:
 - 3 Connect to a GATT server https://developer.android.com/guide/topics/connectivity/bluetooth/connect-gatt-server
 - 4 Transfer BLE data https://developer.android.com/guide/topics/connectivity/bluetooth/transfer-ble-data
 
+Find the specifications for BLE services here:
+
+https://www.bluetooth.com/specifications/specs/
+
+Time Server: Current Time Service 1.1: https://www.bluetooth.com/specifications/specs/current-time-service-1-1/
+
+A simulator for Android BLE server: https://play.google.com/store/apps/details?id=io.github.webbluetoothcg.bletestperipheral
+( simulates a Battery service, a Heart Rate Monitor or a Health Thermometer)
+
+https://play.google.com/store/apps/details?id=com.vance.cwartist.cwsimulation
+(simulates Battery, Heart Rate and chatting, english & chinese)
+
+https://play.google.com/store/apps/details?id=com.zhctwh.ble_tester
+(simulates )
+
+Explorer: https://play.google.com/store/apps/details?id=com.punchthrough.lightblueexplorer&hl=de&gl=US
+
+
 ```plaintext
     <!-- Min/target SDK versions (<uses-sdk>) managed by build.gradle -->
     <!-- Request legacy Bluetooth permissions on older devices. -->

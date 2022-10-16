@@ -1,4 +1,4 @@
-package de.androidcrypto.bluetoothlesamplegattclient1;
+package de.androidcrypto.blegattclienttime;
 
 /*
  * Copyright (C) 2013 The Android Open Source Project
@@ -43,6 +43,8 @@ import java.util.UUID;
  */
 public class BluetoothLeService extends Service {
     private final static String TAG = BluetoothLeService.class.getSimpleName();
+    private static final UUID UUID_HEART_RATE_MEASUREMENT = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb");
+    private static final UUID UUID_CURRENT_TIME           = UUID.fromString("00002a2b-0000-1000-8000-00805f9b34fb");
 
     private BluetoothManager mBluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
@@ -77,7 +79,7 @@ public class BluetoothLeService extends Service {
     public final static UUID UUID_GENUINO101_switchChare =
             UUID.fromString(String_GENUINO101_switchChar);
 
-    public final static UUID UUID_HEART_RATE_MEASUREMENT = UUID.fromString("123");
+    //public final static UUID UUID_HEART_RATE_MEASUREMENT = UUID.fromString("123");
 
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
@@ -142,7 +144,11 @@ public class BluetoothLeService extends Service {
         // carried out as per profile specifications:
         // http://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx
         // ?u=org.bluetooth.characteristic.heart_rate_measurement.xml
+
+        System.out.println("*** characteristic.getUuid: " + characteristic.getUuid());
+
         if (UUID_HEART_RATE_MEASUREMENT.equals(characteristic.getUuid())) {
+            System.out.println("* UUID_HEART_RATE_MEASUREMENT found *");
             int flag = characteristic.getProperties();
             int format = -1;
             if ((flag & 0x01) != 0) {
@@ -155,18 +161,28 @@ public class BluetoothLeService extends Service {
             final int heartRate = characteristic.getIntValue(format, 1);
             Log.d(TAG, String.format("Received heart rate: %d", heartRate));
             intent.putExtra(EXTRA_DATA, String.valueOf(heartRate));
+        } else if (UUID_CURRENT_TIME.equals(characteristic.getUuid())) {
+            System.out.println("* UUID_UUID_CURRENT_TIME found *");
+            final byte[] data = characteristic.getValue();
+            if (data != null && data.length > 0) {
+                String receivedTime = CurrentTimeService.getTimestampFromService(data);
+                Log.d(TAG, String.format("Received heart rate: %s", receivedTime));
+                intent.putExtra(EXTRA_DATA,receivedTime);
+            }
+
         } else {
+            System.out.println("* unknown UUID found *");
             // For all other profiles, writes the data formatted in HEX.
             final byte[] data = characteristic.getValue();
             if (data != null && data.length > 0) {
                 final StringBuilder stringBuilder = new StringBuilder(data.length);
-                for(byte byteChar : data)
+                for (byte byteChar : data)
                     stringBuilder.append(String.format("%02X ", byteChar));
                 intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
             }
         }
 
-
+/*
         //remove special handling for time being
         Log.w(TAG, "broadcastUpdate()");
 
@@ -176,14 +192,14 @@ public class BluetoothLeService extends Service {
 
         if (data != null && data.length > 0) {
             final StringBuilder stringBuilder = new StringBuilder(data.length);
-            for(byte byteChar : data) {
+            for (byte byteChar : data) {
                 stringBuilder.append(String.format("%02X ", byteChar));
 
                 Log.v(TAG, String.format("%02X ", byteChar));
             }
             intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
         }
-
+*/
         sendBroadcast(intent);
     }
 
@@ -238,12 +254,11 @@ public class BluetoothLeService extends Service {
      * Connects to the GATT server hosted on the Bluetooth LE device.
      *
      * @param address The device address of the destination device.
-     *
      * @return Return true if the connection is initiated successfully. The connection result
-     *         is reported asynchronously through the
-     *         {@code BluetoothGattCallback#onConnectionStateChange(
-     *         android.bluetooth.BluetoothGatt, int, int)}
-     *         callback.
+     * is reported asynchronously through the
+     * {@code BluetoothGattCallback#onConnectionStateChange(
+     * android.bluetooth.BluetoothGatt, int, int)}
+     * callback.
      */
     @SuppressLint("MissingPermission")
     public boolean connect(final String address) {
@@ -328,7 +343,7 @@ public class BluetoothLeService extends Service {
      * Enables or disables notification on a give characteristic.
      *
      * @param characteristic Characteristic to act on.
-     * @param enabled If true, enable notification.  False otherwise.
+     * @param enabled        If true, enable notification.  False otherwise.
      */
     @SuppressLint("MissingPermission")
     public void setCharacteristicNotification(BluetoothGattCharacteristic characteristic,

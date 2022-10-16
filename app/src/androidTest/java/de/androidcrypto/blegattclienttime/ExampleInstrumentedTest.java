@@ -1,4 +1,4 @@
-package de.androidcrypto.bluetoothlesamplegattclient1;
+package de.androidcrypto.blegattclienttime;
 
 import android.content.Context;
 

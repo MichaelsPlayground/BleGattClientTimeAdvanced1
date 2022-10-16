@@ -1,4 +1,4 @@
-package de.androidcrypto.bluetoothlesamplegattclient1;
+package de.androidcrypto.blegattclienttime;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -131,8 +131,9 @@ public class ControlActivity extends AppCompatActivity {
         for (BluetoothGattService gattService : gattServices) {
             HashMap<String, String> currentServiceData = new HashMap<String, String>();
             uuid = gattService.getUuid().toString();
-            currentServiceData.put(
-                    LIST_NAME, lookup(uuid, unknownServiceString));
+            // new: lookup for a lot of services
+            //currentServiceData.put(LIST_NAME, lookup(uuid, unknownServiceString));
+            currentServiceData.put(LIST_NAME, AllGattServices.lookup(uuid, unknownServiceString));
             currentServiceData.put(LIST_UUID, uuid);
             gattServiceData.add(currentServiceData);
 
@@ -148,8 +149,9 @@ public class ControlActivity extends AppCompatActivity {
                 charas.add(gattCharacteristic);
                 HashMap<String, String> currentCharaData = new HashMap<String, String>();
                 uuid = gattCharacteristic.getUuid().toString();
-                currentCharaData.put(
-                        LIST_NAME, lookup(uuid, unknownCharaString));
+                // new: lookup for a lot of characteristics
+                //currentCharaData.put(LIST_NAME, lookup(uuid, unknownCharaString));
+                currentCharaData.put(LIST_NAME, AllGattCharacteristics.lookup(uuid, unknownCharaString));
                 currentCharaData.put(LIST_UUID, uuid);
                 gattCharacteristicGroupData.add(currentCharaData);
 

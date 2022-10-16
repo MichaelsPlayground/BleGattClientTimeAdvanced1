@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'de.androidcrypto.bluetoothlesamplegattclient1'
+    namespace 'de.androidcrypto.blegattclienttime'
     compileSdk 32
 
     defaultConfig {
-        applicationId "de.androidcrypto.bluetoothlesamplegattclient1"
+        applicationId "de.androidcrypto.blegattclienttime"
         minSdk 21
         targetSdk 32
         versionCode 1

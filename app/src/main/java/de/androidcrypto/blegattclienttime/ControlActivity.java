@@ -14,7 +14,10 @@ import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ExpandableListView;
 import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
@@ -38,6 +41,9 @@ public class ControlActivity extends AppCompatActivity {
     private BluetoothLeService mBluetoothLeService;
 
     TextView textViewState;
+    Button writeToDevice, notify;
+    EditText dataToWrite;
+
     private ExpandableListView mGattServicesList;
 
     private final String LIST_NAME = "NAME";
@@ -45,6 +51,42 @@ public class ControlActivity extends AppCompatActivity {
 
     private ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics =
             new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_control);
+
+        final Intent intent = getIntent();
+        mDeviceName = intent.getStringExtra(EXTRAS_DEVICE_NAME);
+        mDeviceAddress = intent.getStringExtra(EXTRAS_DEVICE_ADDRESS);
+
+        dataToWrite = findViewById(R.id.etControlWriteData);
+        writeToDevice = findViewById(R.id.btnControlWrite);
+        notify = findViewById(R.id.btnControlNotify);
+
+        TextView textViewDeviceName = (TextView)findViewById(R.id.textDeviceName);
+        TextView textViewDeviceAddr = (TextView)findViewById(R.id.textDeviceAddress);
+        textViewState = (TextView)findViewById(R.id.textState);
+
+        textViewDeviceName.setText(mDeviceName);
+        textViewDeviceAddr.setText(mDeviceAddress);
+
+        mGattServicesList = (ExpandableListView) findViewById(R.id.gatt_services_list);
+        mGattServicesList.setOnChildClickListener(servicesListClickListner);
+
+        Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
+        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
+
+        dataToWrite.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String data = dataToWrite.getText().toString();
+
+
+            }
+        });
+    }
 
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -202,34 +244,26 @@ public class ControlActivity extends AppCompatActivity {
                             mBluetoothLeService.setCharacteristicNotification(
                                     characteristic, true);
                         }
+
+                        if (BluetoothLeService.isCharacteristicWritableWithResponse(characteristic)) {
+                            dataToWrite.setEnabled(true);
+                            writeToDevice.setEnabled(true);
+                        } else {
+                            dataToWrite.setEnabled(false);
+                            writeToDevice.setEnabled(false);
+                        }
+
+                        if (BluetoothLeService.isCharacteristicNotifiable(characteristic)) {
+                            notify.setEnabled(true);
+                        } else {
+                            notify.setEnabled(false);
+                        }
+
                         return true;
                     }
                     return false;
                 }
             };
-
-    @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_control);
-
-        final Intent intent = getIntent();
-        mDeviceName = intent.getStringExtra(EXTRAS_DEVICE_NAME);
-        mDeviceAddress = intent.getStringExtra(EXTRAS_DEVICE_ADDRESS);
-
-        TextView textViewDeviceName = (TextView)findViewById(R.id.textDeviceName);
-        TextView textViewDeviceAddr = (TextView)findViewById(R.id.textDeviceAddress);
-        textViewState = (TextView)findViewById(R.id.textState);
-
-        textViewDeviceName.setText(mDeviceName);
-        textViewDeviceAddr.setText(mDeviceAddress);
-
-        mGattServicesList = (ExpandableListView) findViewById(R.id.gatt_services_list);
-        mGattServicesList.setOnChildClickListener(servicesListClickListner);
-
-        Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
-        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
-    }
 
     @Override
     protected void onResume() {

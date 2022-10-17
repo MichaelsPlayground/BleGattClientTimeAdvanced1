@@ -79,6 +79,64 @@ public class BluetoothLeService extends Service {
     public final static UUID UUID_GENUINO101_switchChare =
             UUID.fromString(String_GENUINO101_switchChar);
 
+    /**
+     * some utility methods to check for characteristics options
+     */
+
+    /**
+     * Check if a Characetristic supports write permissions
+     * @return Returns <b>true</b> if property is writable
+     */
+    public static boolean isCharacteristicWritable(BluetoothGattCharacteristic characteristic) {
+        return (characteristic.getProperties() & (BluetoothGattCharacteristic.PROPERTY_WRITE | BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) != 0;
+    }
+
+    /**
+     * Check if a Characetristic supports write wuthout response permissions
+     * @return Returns <b>true</b> if property is writable
+     */
+    public static boolean isCharacteristicWritableWithoutResponse(BluetoothGattCharacteristic characteristic) {
+        return (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0;
+    }
+
+    /**
+     * Check if a Characetristic supports write with permissions
+     * @return Returns <b>true</b> if property is writable
+     */
+    public static boolean isCharacteristicWritableWithResponse(BluetoothGattCharacteristic characteristic) {
+        return (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0;
+    }
+
+    /**
+     * Check if a Characteristic supports Notifications
+     *
+     * @return Returns <b>true</b> if property is supports notification
+     */
+    public static boolean isCharacteristicNotifiable(BluetoothGattCharacteristic characteristic) {
+        return (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0;
+    }
+
+    /**
+     * Check if a Descriptor can be read
+     *
+     * @param descriptor a descriptor to check
+     * @return Returns <b>true</b> if descriptor is readable
+     */
+    public static boolean isDescriptorReadable(BluetoothGattDescriptor descriptor) {
+        return (descriptor.getPermissions() & BluetoothGattCharacteristic.PERMISSION_WRITE) != 0;
+    }
+
+    /**
+     * Check if a Descriptor can be written
+     *
+     * @param descriptor a descriptor to check
+     * @return Returns <b>true</b> if descriptor is writeable
+     */
+    public static boolean isDescriptorWriteable(BluetoothGattDescriptor descriptor) {
+        return (descriptor.getPermissions() & BluetoothGattCharacteristic.PERMISSION_WRITE) != 0;
+    }
+
+
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
     private final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {

@@ -1,9 +1,5 @@
 package de.androidcrypto.blegattclienttime;
 
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -28,22 +24,19 @@ import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivityOld extends AppCompatActivity {
 
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothLeScanner mBluetoothLeScanner;
 
     private boolean mScanning;
-
-    /**
-     * usually a lot of devices were found but for using this programm with
-     * BleGattServer examples it is better to limit the scan results to
-     * devices with a name
-     */
-    private static boolean scanOnlyForNamedDevices = true;
 
     private static final int RQS_ENABLE_BLUETOOTH = 1;
 
@@ -119,6 +112,11 @@ public class MainActivity extends AppCompatActivity {
         listBluetoothDevice = new ArrayList<>();
         adapterLeScanResult = new ArrayAdapter<BluetoothDevice>(
                 this, android.R.layout.simple_list_item_1, listBluetoothDevice);
+        /*
+        adapterLeScanResult = new ArrayAdapter<BluetoothDevice>(
+                this, android.R.layout.simple_list_item_1, listBluetoothDevice);
+         */
+
         listViewLE.setAdapter(adapterLeScanResult);
         listViewLE.setOnItemClickListener(scanResultOnItemClickListener);
 
@@ -182,7 +180,7 @@ public class MainActivity extends AppCompatActivity {
                             + device.getBluetoothClass().toString() + "\n"
                             + getBTDeviceType(device);
 
-                    new AlertDialog.Builder(MainActivity.this)
+                    new AlertDialog.Builder(MainActivityOld.this)
                             .setTitle(device.getName())
                             .setMessage(msg)
                             .setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -194,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
                             .setNeutralButton("CONNECT", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
-                                    final Intent intent = new Intent(MainActivity.this,
+                                    final Intent intent = new Intent(MainActivityOld.this,
                                             ControlActivity.class);
                                     intent.putExtra(ControlActivity.EXTRAS_DEVICE_NAME,
                                             device.getName());
@@ -258,7 +256,7 @@ public class MainActivity extends AppCompatActivity {
                     mBluetoothLeScanner.stopScan(scanCallback);
                     listViewLE.invalidateViews();
 
-                    Toast.makeText(MainActivity.this,
+                    Toast.makeText(MainActivityOld.this,
                             "Scan timeout",
                             Toast.LENGTH_LONG).show();
 
@@ -319,26 +317,15 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onScanFailed(int errorCode) {
             super.onScanFailed(errorCode);
-            Toast.makeText(MainActivity.this,
+            Toast.makeText(MainActivityOld.this,
                     "onScanFailed: " + String.valueOf(errorCode),
                     Toast.LENGTH_LONG).show();
         }
 
-        @SuppressLint("MissingPermission")
         private void addBluetoothDevice(BluetoothDevice device){
             if(!listBluetoothDevice.contains(device)){
-                if (scanOnlyForNamedDevices) {
-                    try {
-                        if (!device.getName().equals("")) {
-                            listBluetoothDevice.add(device);
-                        }
-                        listViewLE.invalidateViews();
-                    } catch (NullPointerException e) {
-                        // do nothing
-                    }
-                } else {
-                    listBluetoothDevice.add(device);
-                }
+                listBluetoothDevice.add(device);
+                listViewLE.invalidateViews();
             }
         }
     };

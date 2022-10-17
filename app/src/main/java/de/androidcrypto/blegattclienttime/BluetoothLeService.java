@@ -79,8 +79,6 @@ public class BluetoothLeService extends Service {
     public final static UUID UUID_GENUINO101_switchChare =
             UUID.fromString(String_GENUINO101_switchChar);
 
-    //public final static UUID UUID_HEART_RATE_MEASUREMENT = UUID.fromString("123");
-
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
     private final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
@@ -146,6 +144,11 @@ public class BluetoothLeService extends Service {
         // ?u=org.bluetooth.characteristic.heart_rate_measurement.xml
 
         System.out.println("*** characteristic.getUuid: " + characteristic.getUuid());
+
+        // for testing purposes
+        for (BluetoothGattDescriptor descriptor:characteristic.getDescriptors()){
+            Log.e(TAG, "BluetoothGattDescriptor: "+descriptor.getUuid().toString());
+        }
 
         if (UUID_HEART_RATE_MEASUREMENT.equals(characteristic.getUuid())) {
             System.out.println("* UUID_HEART_RATE_MEASUREMENT found *");

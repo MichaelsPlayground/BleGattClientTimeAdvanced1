@@ -251,7 +251,137 @@ Source taken from: https://gist.github.com/SoulAuctioneer/ee4cb9bc0b3785bbdd51
                 requestCharacteristicValue(txQueueItem.characteristic);
         }
     }
-
 ```
 
+Article series (Java) on medium regarding BLE from Martijn van Welie:
+
+-Making Android BLE work part 1 (Scanning): https://medium.com/@martijn.van.welie/making-android-ble-work-part-1-a736dcd53b02
+-Making Android BLE work part 2 (connecting, disconnecting and discovering services): https://medium.com/@martijn.van.welie/making-android-ble-work-part-2-47a3cdaade07
+-Making Android BLE work part 3 (reading+ writing characteristics, turning notifications on and off): https://medium.com/@martijn.van.welie/making-android-ble-work-part-3-117d3a8aee23
+-Making Android BLE work part 4 (bonding): https://medium.com/@martijn.van.welie/making-android-ble-work-part-4-72a0b85cb442
+
+Library from the same author: https://github.com/weliem/blessed-android 
+
+Another example for a queue: https://medium.com/@martijn.van.welie/making-android-ble-work-part-3-117d3a8aee23 
+```plaintext
+Using a queue
+Since it is very annoying that you can only do one read/write at the time, any serious application will have to manage this. The solution to this issue is to implement a command queue. All of the BLE libraries I mentioned earlier implement a queue! This is really a best practice!
+The idea is that every command you want to do will first be added to the queue. A command is then taken from the queue, executed and when the result comes in the command is marked ‘completed’ and taken off the queue. Then the next command in the queue can be executed. That way you can issue read/write commands whenever you want and they will be executed in the order you enqueued them. This make BLE programming a LOT easier. On iOS, a similar queuing mechanism is implemented inside of CoreBluetooth. Believe me, this is really what you want!
+The queue we need to make has to be a queue per BluetoothGatt object. Luckily, Android will handle the queuing of commands from multiple BluetoothGatt objects, so you don’t need to worry about that. There are many ways to create a queue and for this article I’ll show how to make a simple queue by using a Runnable for every command. We first declare the queue using a Queue object and also declare a ‘lock’ variable to keep track whether an operation is in progress or not:
+private Queue<Runnable> commandQueue;
+private boolean commandQueueBusy;
+We then add a new Runnable to the queue when we do a command. Here is an example for the readCharacteristic command:
+public boolean readCharacteristic(final BluetoothGattCharacteristic characteristic) {
+    if(bluetoothGatt == null) {
+        Log.e(TAG, "ERROR: Gatt is 'null', ignoring read request");
+        return false;
+    }
+
+    // Check if characteristic is valid
+    if(characteristic == null) {
+        Log.e(TAG, "ERROR: Characteristic is 'null', ignoring read request");
+        return false;
+    }
+
+    // Check if this characteristic actually has READ property
+    if((characteristic.getProperties() & PROPERTY_READ) == 0 ) {
+        Log.e(TAG, "ERROR: Characteristic cannot be read");
+        return false;
+    }
+
+    // Enqueue the read command now that all checks have been passed
+    boolean result = commandQueue.add(new Runnable() {
+        @Override
+        public void run() {
+            if(!bluetoothGatt.readCharacteristic(characteristic)) {
+                Log.e(TAG, String.format("ERROR: readCharacteristic failed for characteristic: %s", characteristic.getUuid()));
+                completedCommand();
+            } else {
+                Log.d(TAG, String.format("reading characteristic <%s>", characteristic.getUuid()));
+                nrTries++;
+            }
+        }
+    });
+
+    if(result) {
+        nextCommand();
+    } else {
+        Log.e(TAG, "ERROR: Could not enqueue read characteristic command");
+    }
+    return result;
+}
+In these method we first check if all fields are valid since we don't want to add commands to the queue if we know they will fail. This will also help debugging your application as you will see messages in the log if you trying to do read or write operations on characteristics that don't support those operations. Inside the Runnable we actually make the call to readCharacteristic() which will issue the read command to the device. We also keep track of how many times we tried to executed this command because maybe we’ll have to retry it later. If it returns false we log an error and ‘complete’ the command so that the next command in the queue can be started. Finally, we call nextCommand() to nudge the queue to start executing:
+private void nextCommand() {
+    // If there is still a command being executed then bail out
+    if(commandQueueBusy) {
+        return;
+    }
+
+    // Check if we still have a valid gatt object
+    if (bluetoothGatt == null) {
+        Log.e(TAG, String.format("ERROR: GATT is 'null' for peripheral '%s', clearing command queue", getAddress()));
+        commandQueue.clear();
+        commandQueueBusy = false;
+        return;
+    }
+
+    // Execute the next command in the queue
+    if (commandQueue.size() > 0) {
+        final Runnable bluetoothCommand = commandQueue.peek();
+        commandQueueBusy = true;
+        nrTries = 0;
+
+        bleHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                    try {
+                        bluetoothCommand.run();
+                    } catch (Exception ex) {
+                        Log.e(TAG, String.format("ERROR: Command exception for device '%s'", getName()), ex);
+                    }
+            }
+        });
+    }
+}
+Note that we use a peek() to obtain the Runnable from the queue. That leaves the Runnable on the queue so we can retry it later if we have to.
+After the read is complete the result will come in on your callback:
+@Override
+public void onCharacteristicRead(BluetoothGatt gatt, final BluetoothGattCharacteristic characteristic, int status) {
+    // Perform some checks on the status field
+    if (status != GATT_SUCCESS) {
+        Log.e(TAG, String.format(Locale.ENGLISH,"ERROR: Read failed for characteristic: %s, status %d", characteristic.getUuid(), status));
+        completedCommand();
+        return;
+    }
+
+    // Characteristic has been read so processes it   
+    ...
+    // We done, complete the command
+    completedCommand();
+}
+So if there was an error we log it. Otherwise you process the value of the characteristic. Note that we call completedCommand() only after you are done processing the new value! This will make sure we there is no other command running while you process the value and helps to avoid race conditions.
+Then we complete this command, take the Runnable off the queue by calling poll() and start the next command in the queue:
+private void completedCommand() {
+    commandQueueBusy = false;
+    isRetrying = false;
+    commandQueue.poll();
+    nextCommand();
+}
+In some cases you may have to retry a command. We can do that easily since the Runnable is still on the queue. In order to make sure we don’t endlessly retry commands we also check if we have reached the retry limit:
+private void retryCommand() {
+    commandQueueBusy = false;
+    Runnable currentCommand = commandQueue.peek();
+    if(currentCommand != null) {
+        if (nrTries >= MAX_TRIES) {
+            // Max retries reached, give up on this one and proceed
+            Log.v(TAG, "Max number of tries reached");
+            commandQueue.poll();
+        } else {
+            isRetrying = true;
+        }
+    }
+    nextCommand();
+}
+
+```
 

@@ -66,7 +66,27 @@ public class BluetoothLeService extends Service {
             "android-er.ACTION_DATA_AVAILABLE";
     public final static String EXTRA_DATA =
             "android-er.EXTRA_DATA";
+    public final static String ACTION_DATA_WRITE =
+            "android-er.ACTION_DATA_WRITE";
+    public final static String ACTION_SET_NOTIFICATION =
+            "android-er.ACTION_SET_NOTIFICATION";
+    public final static String ACTION_UNSET_NOTIFICATION =
+            "android-er.ACTION_UNSET_NOTIFICATION";
 
+    /**
+     * this are the specific UUIDs for the Battery Service / Battery Level notifications
+     */
+
+    public static String String_TIMESERVER_BATTERY_LEVEL =
+            "00002a19-0000-1000-8000-00805f9b34fb";
+    public final static UUID UUID_TIMESERVER_BATTERY_LEVEL =
+            UUID.fromString(String_TIMESERVER_BATTERY_LEVEL);
+    public static String String_TIMESERVER_BATTERY_LEVEL_DESCRIPTOR =
+            "00002902-0000-1000-8000-00805f9b34fb";
+    public final static UUID UUID_TIMESERVER_BATTERY_LEVEL_DESCRIPTOR =
+            UUID.fromString(String_TIMESERVER_BATTERY_LEVEL_DESCRIPTOR);
+
+    // todo remove old stuff
     public static String String_GENUINO101_ledService =
             "19B10000-E8F2-537E-4F6C-D104768A1214";
     public final static ParcelUuid ParcelUuid_GENUINO101_ledService =
@@ -84,7 +104,7 @@ public class BluetoothLeService extends Service {
      */
 
     /**
-     * Check if a Characetristic supports write permissions
+     * Check if a characteristic supports write permissions
      * @return Returns <b>true</b> if property is writable
      */
     public static boolean isCharacteristicWritable(BluetoothGattCharacteristic characteristic) {
@@ -92,7 +112,7 @@ public class BluetoothLeService extends Service {
     }
 
     /**
-     * Check if a Characetristic supports write wuthout response permissions
+     * Check if a characteristic supports write wuthout response permissions
      * @return Returns <b>true</b> if property is writable
      */
     public static boolean isCharacteristicWritableWithoutResponse(BluetoothGattCharacteristic characteristic) {
@@ -100,7 +120,7 @@ public class BluetoothLeService extends Service {
     }
 
     /**
-     * Check if a Characetristic supports write with permissions
+     * Check if a characteristic supports write with permissions
      * @return Returns <b>true</b> if property is writable
      */
     public static boolean isCharacteristicWritableWithResponse(BluetoothGattCharacteristic characteristic) {
@@ -108,7 +128,7 @@ public class BluetoothLeService extends Service {
     }
 
     /**
-     * Check if a Characteristic supports Notifications
+     * Check if a characteristic supports Notifications
      *
      * @return Returns <b>true</b> if property is supports notification
      */
@@ -135,7 +155,6 @@ public class BluetoothLeService extends Service {
     public static boolean isDescriptorWriteable(BluetoothGattDescriptor descriptor) {
         return (descriptor.getPermissions() & BluetoothGattCharacteristic.PERMISSION_WRITE) != 0;
     }
-
 
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
@@ -179,11 +198,33 @@ public class BluetoothLeService extends Service {
             }
         }
 
+        /**
+         * Characteristic was written successfully.  update the UI
+         *
+         */
+        @Override
+        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            Log.v(TAG, "characteristic written");
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                broadcastUpdate(ACTION_DATA_WRITE, characteristic);
+            }
+        }
+
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt,
                                             BluetoothGattCharacteristic characteristic) {
             broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
         }
+
+        @Override
+        public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+            super.onDescriptorWrite(gatt, descriptor, status);
+            Log.d(TAG,"onDescriptorWrite");
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                broadcastUpdate(ACTION_SET_NOTIFICATION, descriptor);
+            }
+        }
+
     };
 
     private void broadcastUpdate(final String action) {
@@ -192,9 +233,21 @@ public class BluetoothLeService extends Service {
     }
 
     private void broadcastUpdate(final String action,
-                                 final BluetoothGattCharacteristic characteristic) {
+                                 final BluetoothGattDescriptor descriptor) {
+        Log.i(TAG, "broadcastUpdate descriptor: " + descriptor.getUuid());
         final Intent intent = new Intent(action);
 
+        if (UUID_TIMESERVER_BATTERY_LEVEL_DESCRIPTOR.equals(descriptor.getUuid())) {
+            Log.i(TAG, "BATTERY_LEVEL_DESCRIPTOR found");
+            intent.putExtra(EXTRA_DATA,"BATTERY_LEVEL");
+        }
+        sendBroadcast(intent);
+    }
+
+
+    private void broadcastUpdate(final String action,
+                                 final BluetoothGattCharacteristic characteristic) {
+        final Intent intent = new Intent(action);
 
         // This is special handling for the Heart Rate Measurement profile.  Data parsing is
         // carried out as per profile specifications:
@@ -407,13 +460,37 @@ public class BluetoothLeService extends Service {
      * @param enabled        If true, enable notification.  False otherwise.
      */
     @SuppressLint("MissingPermission")
-    public void setCharacteristicNotification(BluetoothGattCharacteristic characteristic,
+    public void changeCharacteristicNotification(BluetoothGattCharacteristic characteristic,
                                               boolean enabled) {
         if (mBluetoothAdapter == null || mBluetoothGatt == null) {
             Log.w(TAG, "BluetoothAdapter not initialized");
             return;
         }
+
+        Log.i(TAG, "setCharacteristicNotification for characteristic: "
+                + characteristic.getUuid() + " to " + enabled);
+
         mBluetoothGatt.setCharacteristicNotification(characteristic, enabled);
+
+        // this is specific to TimeServer BatteryService - Battery Level
+        if (UUID_TIMESERVER_BATTERY_LEVEL.equals(characteristic.getUuid())) {
+            Log.i(TAG, "UUID_TIMESERVER_BATTERY_LEVEL.equals(characteristic.getUuid");
+            Log.i(TAG, "Characteristic UUID: " + characteristic.getUuid());
+
+            List<BluetoothGattDescriptor> listDescriptors = characteristic.getDescriptors();
+            Log.i(TAG, "listDescriptors size: " + listDescriptors.size());
+            Log.i(TAG, "list 0 UUID: " + listDescriptors.get(0).getUuid());
+
+            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
+                    UUID_TIMESERVER_BATTERY_LEVEL_DESCRIPTOR);
+            Log.i(TAG, "Descriptor UUID: " + descriptor.getUuid());
+            Log.i(TAG, "BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE: "
+                    + BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            mBluetoothGatt.writeDescriptor(descriptor);
+            Log.i(TAG, "mBluetoothGatt.writeCharacteristic done for " + UUID_TIMESERVER_BATTERY_LEVEL);
+            Log.i(TAG, "mBluetoothGatt.writeDescriptor done for " + descriptor.getUuid());
+        }
 
         // This is specific to Genuino 101 ledService.
         if (UUID_GENUINO101_ledService.equals(characteristic.getUuid())) {
@@ -423,6 +500,23 @@ public class BluetoothLeService extends Service {
             mBluetoothGatt.writeDescriptor(descriptor);
         }
     }
+
+    /**
+     * Request a write to a given {@code BluetoothGattCharacteristic}.
+     *
+     * @param characteristic The characteristic to write to.
+     */
+    @SuppressLint("MissingPermission")
+    public void writeCharacteristic(BluetoothGattCharacteristic characteristic, int data) {
+        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
+            Log.w(TAG, "BluetoothAdapter not initialized");
+            return;
+        }
+        Log.i(TAG, "writeCharacteristic called, fired to mBluetoothGatt.writeCharacteristic");
+        characteristic.setValue(data, BluetoothGattCharacteristic.FORMAT_UINT8, 0);
+        mBluetoothGatt.writeCharacteristic(characteristic);
+    }
+
 
     /**
      * Retrieves a list of supported GATT services on the connected device. This should be

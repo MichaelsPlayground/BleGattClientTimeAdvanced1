@@ -4,6 +4,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -21,6 +22,7 @@ import android.widget.EditText;
 import android.widget.ExpandableListView;
 import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +40,8 @@ public class ControlActivity extends AppCompatActivity {
 
     private boolean mConnected = false;
     private BluetoothGattCharacteristic mNotifyCharacteristic;
+    private BluetoothGattCharacteristic mWriteCharacteristic; // used for writing new data, filled by
+    private BluetoothGattDescriptor mNotifyDescriptor; // used for changing notification, filled by
     private BluetoothLeService mBluetoothLeService;
 
     TextView textViewState;
@@ -78,12 +82,32 @@ public class ControlActivity extends AppCompatActivity {
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
         bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
 
-        dataToWrite.setOnClickListener(new View.OnClickListener() {
+        writeToDevice.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                Log.i(TAG, "dataToWrite onClick clicked");
                 String data = dataToWrite.getText().toString();
+                int dataInt = Integer.parseInt(data);
+                // check that a characteristic was choosen
+                if (mWriteCharacteristic != null) {
+                    Log.i(TAG, "dataToWrite onClick calls writeCharacteristic");
+                    mBluetoothLeService.writeCharacteristic(mWriteCharacteristic, dataInt);
 
+                } else {
+                    Log.i(TAG, "dataToWrite onClick mWriteCharacteristic is NULL");
+                }
 
+            }
+        });
+
+        notify.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String status = "not subscribed";
+                Log.i(TAG, "notify clicked, status is ");
+                boolean newNotification = true;
+                Log.i(TAG, "change Notification for " + mNotifyCharacteristic + "to " + newNotification);
+                mBluetoothLeService.changeCharacteristicNotification(mNotifyCharacteristic, newNotification);
             }
         });
     }
@@ -114,6 +138,9 @@ public class ControlActivity extends AppCompatActivity {
     // ACTION_GATT_SERVICES_DISCOVERED: discovered GATT services.
     // ACTION_DATA_AVAILABLE: received data from the device.  This can be a result of read
     //                        or notification operations.
+    // ACTION_DATA_WRITE: write data to the device. This can be a result of a write operation.
+    // ACTION_SET_NOTIFICATION: changed the notification status
+
     private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -129,8 +156,25 @@ public class ControlActivity extends AppCompatActivity {
                 // Show all the supported services and characteristics on the user interface.
                 displayGattServices(mBluetoothLeService.getSupportedGattServices());
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
-                displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
-
+                String dataAvailable = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
+                displayData(dataAvailable);
+                Toast.makeText(getApplicationContext(),
+                                "DATA_AVAILABLE " + dataAvailable,
+                                Toast.LENGTH_SHORT)
+                        .show();
+            } else if (BluetoothLeService.ACTION_DATA_WRITE.equals(action)) {
+                clearEditData();
+                Toast.makeText(getApplicationContext(),
+                                "new data written to the server",
+                                Toast.LENGTH_SHORT)
+                        .show();
+            }
+            else if (BluetoothLeService.ACTION_SET_NOTIFICATION.equals(action)) {
+                String data = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
+                Toast.makeText(getApplicationContext(),
+                                "notification was changed for " + data,
+                                Toast.LENGTH_SHORT)
+                        .show();
             }
         }
     };
@@ -152,6 +196,13 @@ public class ControlActivity extends AppCompatActivity {
         if (data != null) {
             textViewState.setText(data);
         }
+    }
+
+    /**
+     * Clear the input TextView when a Characteristic is successfully written to.
+     */
+    public void clearEditData() {
+        dataToWrite.setText("");
     }
 
     // Demonstrates how to iterate through the supported GATT Services/Characteristics.
@@ -233,7 +284,7 @@ public class ControlActivity extends AppCompatActivity {
                             // If there is an active notification on a characteristic, clear
                             // it first so it doesn't update the data field on the user interface.
                             if (mNotifyCharacteristic != null) {
-                                mBluetoothLeService.setCharacteristicNotification(
+                                mBluetoothLeService.changeCharacteristicNotification(
                                         mNotifyCharacteristic, false);
                                 mNotifyCharacteristic = null;
                             }
@@ -241,11 +292,14 @@ public class ControlActivity extends AppCompatActivity {
                         }
                         if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
                             mNotifyCharacteristic = characteristic;
-                            mBluetoothLeService.setCharacteristicNotification(
+                            mBluetoothLeService.changeCharacteristicNotification(
                                     characteristic, true);
                         }
 
                         if (BluetoothLeService.isCharacteristicWritableWithResponse(characteristic)) {
+                            Log.i(TAG, "ExpandableListView.OnChildClickListener isCharacteristicWritableWithResponse");
+                            Log.i(TAG, "characteristic: " + characteristic.getUuid());
+                            mWriteCharacteristic = characteristic;
                             dataToWrite.setEnabled(true);
                             writeToDevice.setEnabled(true);
                         } else {

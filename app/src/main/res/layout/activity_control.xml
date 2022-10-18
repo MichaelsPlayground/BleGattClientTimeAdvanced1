@@ -5,7 +5,8 @@
     android:layout_height="match_parent"
     android:padding="16dp"
     android:orientation="vertical"
-    tools:context=".ControlActivity">
+    tools:context=".ControlActivity"
+    android:focusableInTouchMode="true">
 
     <TextView
         android:layout_width="wrap_content"

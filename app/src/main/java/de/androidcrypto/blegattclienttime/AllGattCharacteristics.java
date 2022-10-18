@@ -229,6 +229,8 @@ public class AllGattCharacteristics {
         attributes.put("00002b1e-0000-1000-8000-00805f9b34fb", "RC Settings");
         attributes.put("00002b1f-0000-1000-8000-00805f9b34fb", "Reconnection Configuration Control Point");
 
+        /* here are some attributes used only in this specific project */
+        attributes.put("0000fffe-0000-1000-8000-00805f9b34fb", "Battery Level Warning");
     }
 
     public static String lookup(String uuid) {
